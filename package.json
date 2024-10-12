@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "build:js": "rollup -c rollup.config.js --bundleConfigAsCjs",
+    "watch:js": "rollup -c rollup.config.js --bundleConfigAsCjs --watch",
+    "dev": "npm run watch:css & npm run watch:js & node build.development.mjs",
+    "prod": "npm run build:css && npm run build:js && node build.production.mjs"
+  },
+  "devDependencies": {
+    "@aptos-labs/ts-sdk": "^1.29.1",
+    "@rollup/plugin-node-resolve": "^15.3.0",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.1.0"
+  }
+}
