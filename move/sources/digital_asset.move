@@ -21,6 +21,8 @@ module my_addrx::artemis_one {
     const EPAUSED: u64 = 5;
     const EINVALID_PRICE: u64 = 6;
     const EINSUFFICIENT_BALANCE: u64 = 7;
+    const EASSET_NOT_FOUND: u64 = 8;
+    const EINVALID_AMOUNT: u64 = 9;
 
     const NAME_UPPER_BOUND: u64 = 64;
     const APP_OBJECT_NAME: vector<u8> = b"ARTEMIS COLLECTIVE ONE";
@@ -34,11 +36,6 @@ module my_addrx::artemis_one {
         mint_ref: MintRef,
         transfer_ref: TransferRef,
         burn_ref: BurnRef,
-    }
-
-    #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
-    struct State has key {
-        paused: bool,
     }
 
     struct Asset has key {
@@ -67,6 +64,14 @@ module my_addrx::artemis_one {
     struct MintFungibleTokenEvent has drop, store {
         amount: u64,
         recipient: address,
+    }
+
+    #[event]
+    struct PurchaseTokenEvent has drop, store {
+        buyer_address: address,
+        asset_name: String,
+        amount: u64,
+        total_price: u128
     }
 
     struct ObjectController has key {
@@ -126,24 +131,20 @@ module my_addrx::artemis_one {
         assert!(string::length(&name) <= NAME_UPPER_BOUND, error::invalid_argument(ENAME_LIMIT));
         assert!(price_per_token > 0, error::invalid_argument(EINVALID_PRICE));
 
-        let uri = string::utf8(ARTEMIS_COLLECTION_URI);
         let description = string::utf8(ARTEMIS_COLLECTION_DESCRIPTION);
-
         let constructor_ref = token::create_named_token(
             &get_app_signer(),
             string::utf8(ARTEMIS_COLLECTION_NAME),
             description,
             name,
             option::none(),
-            uri,
+            arteesan_url,
         );
 
         let token_signer = object::generate_signer(&constructor_ref);
         let mutator_ref = token::generate_mutator_ref(&constructor_ref);
         let burn_ref = token::generate_burn_ref(&constructor_ref);
         let transfer_ref = object::generate_transfer_ref(&constructor_ref);
-
-        // initialize/set default Aptogotchi struct values
         let asset = Asset {
             name,
             artist,
@@ -155,8 +156,6 @@ module my_addrx::artemis_one {
         };
 
         move_to(&token_signer, asset);
-
-        // Emit event for minting Aptogotchi token
         event::emit<MintAssetEvent>(
             MintAssetEvent {
                 asset_name: name
@@ -164,15 +163,14 @@ module my_addrx::artemis_one {
         );
 
         object::transfer_with_ref(object::generate_linear_transfer_ref(&transfer_ref), address_of(creator));
-
-        create_token(token_name, token_symbol, token_supply, price_per_token);
+        create_token(creator, token_name, token_symbol, token_supply);
     }
 
     fun create_token(
+        creator: &signer,
         name: String,
         symbol: String,
         total_supply: u128,
-        price_per_token: u64
     ) acquires ObjectController {
         let constructor_ref = &object::create_named_object(
             &get_app_signer(),
@@ -184,7 +182,7 @@ module my_addrx::artemis_one {
             option::some(total_supply),
             name,
             symbol,
-            8,
+            0,
             string::utf8(b"https://artemiscolletive.xyz/favicon.ico"), /* icon */
             string::utf8(b"https://artemiscolletive.xyz"), /* project */
         );
@@ -201,7 +199,7 @@ module my_addrx::artemis_one {
         });
 
         let fa = fungible_asset::mint(&mint_ref, (total_supply as u64));
-        let creator_address = signer::address_of(&get_app_signer());
+        let creator_address = signer::address_of(creator);
         let creator_store = primary_fungible_store::ensure_primary_store_exists(
             creator_address,
             object::object_from_constructor_ref<Metadata>(constructor_ref));
@@ -213,7 +211,6 @@ module my_addrx::artemis_one {
             recipient: creator_address,
         });
 
-
         move_to(
             &metadata_object_signer,
             ManagedFungibleAsset { mint_ref, transfer_ref, burn_ref }
@@ -222,12 +219,22 @@ module my_addrx::artemis_one {
 
     #[view]
     /// Return the address of the managed fungible asset that's created when this module is deployed.
-    public fun get_metadata(token_symbol: vector<u8>): Object<Metadata> {
-        let asset_address = object::create_object_address(&@my_addrx, token_symbol);
+    public fun get_metadata(token_symbol: vector<u8>): Object<Metadata> acquires ObjectController {
+        // let asset_address = object::create_object_address(&@my_addrx, token_symbol);
+        // object::address_to_object<Metadata>(asset_address)
+
+        let app_signer = get_app_signer();
+        let app_signer_addr = signer::address_of(&app_signer);
+        let asset_address = object::create_object_address(&app_signer_addr, token_symbol);
         object::address_to_object<Metadata>(asset_address)
     }
 
-    public entry fun mint(admin: &signer, to: address, amount: u64, symbol: vector<u8>) acquires ManagedFungibleAsset {
+    public entry fun mint(
+        admin: &signer,
+        to: address,
+        amount: u64,
+        symbol: vector<u8>
+    ) acquires ManagedFungibleAsset, ObjectController {
         let asset = get_metadata(symbol);
         let managed_fungible_asset = authorized_borrow_refs(admin, asset);
         let to_wallet = primary_fungible_store::ensure_primary_store_exists(to, asset);
@@ -241,7 +248,7 @@ module my_addrx::artemis_one {
         to: address,
         amount: u64,
         symbol: vector<u8>
-    ) acquires ManagedFungibleAsset, State {
+    ) acquires ManagedFungibleAsset, ObjectController {
         let asset = get_metadata(symbol);
         let transfer_ref = &authorized_borrow_refs(admin, asset).transfer_ref;
         let from_wallet = primary_fungible_store::primary_store(from, asset);
@@ -255,7 +262,7 @@ module my_addrx::artemis_one {
         from: address,
         amount: u64,
         symbol: vector<u8>
-    ) acquires ManagedFungibleAsset {
+    ) acquires ManagedFungibleAsset, ObjectController {
         let asset = get_metadata(symbol);
         let burn_ref = &authorized_borrow_refs(admin, asset).burn_ref;
         let from_wallet = primary_fungible_store::primary_store(from, asset);
@@ -266,7 +273,7 @@ module my_addrx::artemis_one {
         admin: &signer,
         account: address,
         symbol: vector<u8>
-    ) acquires ManagedFungibleAsset {
+    ) acquires ManagedFungibleAsset, ObjectController {
         let asset = get_metadata(symbol);
         let transfer_ref = &authorized_borrow_refs(admin, asset).transfer_ref;
         let wallet = primary_fungible_store::ensure_primary_store_exists(account, asset);
@@ -277,7 +284,7 @@ module my_addrx::artemis_one {
         admin: &signer,
         account: address,
         symbol: vector<u8>
-    ) acquires ManagedFungibleAsset {
+    ) acquires ManagedFungibleAsset, ObjectController {
         let asset = get_metadata(symbol);
         let transfer_ref = &authorized_borrow_refs(admin, asset).transfer_ref;
         let wallet = primary_fungible_store::ensure_primary_store_exists(account, asset);
@@ -288,38 +295,46 @@ module my_addrx::artemis_one {
         buyer: &signer,
         amount: u64,
         asset_name: String
-    ) acquires ManagedFungibleAsset, State, Asset {
-        let asset_address = object::create_object_address(&@my_addrx, *string::bytes(&asset_name));
-        let asset = borrow_global<Asset>(asset_address);
-
-        let total_price = (amount as u128) * (asset.price_per_token as u128);
-        assert!(total_price > 0 && total_price <= 18446744073709551615, error::invalid_argument(EINVALID_PRICE));
-
-        let token_metadata = get_metadata(*string::bytes(&asset.token_symbol));
-
+    ) acquires ObjectController, Asset, ManagedFungibleAsset {
         let buyer_addr = signer::address_of(buyer);
+        let app_signer = get_app_signer();
+        let app_signer_addr = signer::address_of(&app_signer);
+        let asset_address = token::create_token_address(
+            &app_signer_addr,
+            &string::utf8(ARTEMIS_COLLECTION_NAME),
+            &asset_name
+        );
+        let asset = borrow_global<Asset>(asset_address);
+        let total_price = (amount as u128) * (asset.price_per_token as u128);
+        let token_metadata = get_metadata(*string::bytes(&asset.token_symbol));
+        assert!(total_price > 0 && total_price <= 18446744073709551615, error::invalid_argument(EINVALID_PRICE));
         assert!(
             coin::balance<AptosCoin>(buyer_addr) >= (total_price as u64),
             error::invalid_argument(EINSUFFICIENT_BALANCE)
         );
 
-        let creator_addr = get_app_signer_addr();
+        let creator_addr = @my_addrx;
         coin::transfer<AptosCoin>(buyer, creator_addr, (total_price as u64));
 
         let transfer_ref = &borrow_global<ManagedFungibleAsset>(object::object_address(&token_metadata)).transfer_ref;
         let creator_store = primary_fungible_store::primary_store(creator_addr, token_metadata);
         let buyer_store = primary_fungible_store::ensure_primary_store_exists(buyer_addr, token_metadata);
-
         let fa = withdraw(creator_store, amount, transfer_ref);
         deposit(buyer_store, fa, transfer_ref);
+
+        event::emit(PurchaseTokenEvent {
+            buyer_address: buyer_addr,
+            asset_name: asset_name,
+            amount,
+            total_price
+        });
     }
 
     public fun withdraw<T: key>(
         store: Object<T>,
         amount: u64,
         transfer_ref: &TransferRef,
-    ): FungibleAsset acquires State {
-        assert_not_paused();
+    ): FungibleAsset {
         fungible_asset::withdraw_with_ref(transfer_ref, store, amount)
     }
 
@@ -327,15 +342,8 @@ module my_addrx::artemis_one {
         store: Object<T>,
         fa: FungibleAsset,
         transfer_ref: &TransferRef,
-    ) acquires State {
-        assert_not_paused();
+    ) {
         fungible_asset::deposit_with_ref(transfer_ref, store, fa);
-    }
-
-    // Assert that the FA coin is not paused.
-    fun assert_not_paused() acquires State {
-        let state = borrow_global<State>(object::create_object_address(&@my_addrx, ASSET_SYMBOL));
-        assert!(!state.paused, EPAUSED);
     }
 
     inline fun authorized_borrow_refs(
