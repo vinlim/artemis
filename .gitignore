@@ -3,3 +3,4 @@ node_modules/
 move/build/
 move/.aptos/
 build/
+.env

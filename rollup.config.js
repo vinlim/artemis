@@ -1,6 +1,9 @@
+require('source-map-support').install();
+
 import resolve from '@rollup/plugin-node-resolve';
-import terser from '@rollup/plugin-terser';
 import typescript from "@rollup/plugin-typescript";
+import commonjs from "@rollup/plugin-commonjs";
+
 
 module.exports = [
     {
@@ -13,9 +16,7 @@ module.exports = [
             sourcemap: true
         },
         plugins: [
-            resolve(),
-            typescript(),
-            terser()
+            typescript()
         ]
     }
 ]
