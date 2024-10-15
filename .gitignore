@@ -1,6 +1,8 @@
 .idea
+.DS_Store
 node_modules/
 move/build/
 move/.aptos/
 build/
 .env
+env.d.ts
