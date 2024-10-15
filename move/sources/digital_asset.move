@@ -7,6 +7,7 @@ module my_addrx::artemis_one {
     use aptos_token_objects::token;
     use std::error;
     use std::option;
+    use std::option::Option;
     use std::signer;
     use std::signer::address_of;
     use std::string::{Self, String};
@@ -23,6 +24,8 @@ module my_addrx::artemis_one {
     const EINSUFFICIENT_BALANCE: u64 = 7;
     const EASSET_NOT_FOUND: u64 = 8;
     const EINVALID_AMOUNT: u64 = 9;
+    const EINSUFFICIENT_TOKENS: u64 = 10;
+    const EASSET_NOT_REDEEMABLE: u64 = 11;
 
     const NAME_UPPER_BOUND: u64 = 64;
     const APP_OBJECT_NAME: vector<u8> = b"ARTEMIS COLLECTIVE ONE";
@@ -72,6 +75,13 @@ module my_addrx::artemis_one {
         asset_name: String,
         amount: u64,
         total_price: u128
+    }
+
+    #[event]
+    struct AssetClaimEvent has drop, store {
+        claimer: address,
+        asset_name: String,
+        burned_tokens: u64,
     }
 
     struct ObjectController has key {
@@ -328,6 +338,48 @@ module my_addrx::artemis_one {
             amount,
             total_price
         });
+    }
+
+    public entry fun claim_asset(
+        claimer: &signer,
+        asset_name: String
+    ) acquires ObjectController, Asset, ManagedFungibleAsset {
+        let claimer_addr = signer::address_of(claimer);
+        let app_signer = get_app_signer();
+        let app_signer_addr = signer::address_of(&app_signer);
+        let asset_address = token::create_token_address(
+            &app_signer_addr,
+            &string::utf8(ARTEMIS_COLLECTION_NAME),
+            &asset_name
+        );
+
+        let asset = borrow_global<Asset>(asset_address);
+        let token_metadata = get_metadata(*string::bytes(&asset.token_symbol));
+        let token_supply = fungible_asset::supply(token_metadata);
+        assert!(option::is_some(&token_supply), error::invalid_state(EASSET_NOT_REDEEMABLE));
+
+        let redeemer_store = primary_fungible_store::ensure_primary_store_exists(claimer_addr, token_metadata);
+        let redeemer_balance = fungible_asset::balance(redeemer_store);
+        assert!(check_total_supply(redeemer_balance, token_supply), error::invalid_argument(EINSUFFICIENT_TOKENS));
+
+        let burn_ref = &borrow_global<ManagedFungibleAsset>(object::object_address(&token_metadata)).burn_ref;
+        fungible_asset::burn_from(burn_ref, redeemer_store, redeemer_balance);
+
+        let asset_object = object::address_to_object<Asset>(asset_address);
+        object::transfer(&app_signer, asset_object, claimer_addr);
+        event::emit(AssetClaimEvent {
+            claimer: claimer_addr,
+            asset_name: asset_name,
+            burned_tokens: redeemer_balance,
+        });
+    }
+
+    fun check_total_supply(balance: u64, supply: Option<u128>): bool {
+        if (option::is_none(&supply)) {
+            return false
+        };
+        let total_supply = option::extract(&mut supply);
+        (balance as u128) == total_supply
     }
 
     public fun withdraw<T: key>(
