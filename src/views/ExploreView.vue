@@ -57,7 +57,8 @@
             <div class="font-serif">Your Fraction</div>
             <div>-</div>
           </div>
-          <div class="w-full mb-2 py-3">
+          <div v-if="!isLoading"
+               class="w-full mb-2 py-3">
             <div class="grid grid-cols-7">
               <input v-model="purchaseAmount" class="h-full col-span-5 px-3 py-2 text-center" type="number" step="1"
                      min="1" max="720"
@@ -66,6 +67,11 @@
                       @click="purchase">
                 Purchase
               </button>
+            </div>
+          </div>
+          <div v-else class="w-full mb-2 py-3">
+            <div class="w-full h-[2rem] bg-gray-400 animate-pulse text-gray-200 flex justify-center items-center">
+              Transacting ...
             </div>
           </div>
         </div>
@@ -82,6 +88,7 @@ import {useWalletStore} from "@/stores/wallet";
 
 const walletStore = useWalletStore();
 const purchaseAmount = ref(0);
+const isLoading = ref(false);
 let APTOS_NETWORK = Network.DEVNET;
 let config = new AptosConfig({network: APTOS_NETWORK});
 let aptosClient = new Aptos(config)
@@ -90,6 +97,7 @@ let aptosClient = new Aptos(config)
 onMounted(() => {
   getAccountResource();
 })
+
 async function getAccountResource() {
   // const tokens = await aptosClient.getAccountResource({
   //   accountAddress: "0xbdb72464e382add52ffbf7f66f689948885831dc14f585685487c9d6945ca846",
@@ -105,6 +113,7 @@ async function purchase() {
     return;
   }
 
+  isLoading.value = true;
   const transaction = {
     arguments: [purchaseAmount.value, "Artwork #4"],
     function: '0x08716457dd4c48f20cdbe240205a1c68e9f411a60fa2fd659265da35ed517340::artemis_one::purchase_fractional_ownership',
@@ -118,8 +127,8 @@ async function purchase() {
     const txn = await aptosClient.getTransactionByHash(pendingTransaction.hash);
     console.log(txn);
   } catch (error) {
-    console.log(error);
-    // console.error(error);
+    console.error(error);
   }
+  isLoading.value = false;
 }
 </script>

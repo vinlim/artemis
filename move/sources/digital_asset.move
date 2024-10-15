@@ -51,6 +51,11 @@ module my_addrx::artemis_one {
         burn_ref: token::BurnRef
     }
 
+    struct AssetSupplyBalance has drop {
+        total_supply: u128,
+        user_balance: u64,
+    }
+
     #[event]
     struct MintAssetEvent has drop, store {
         asset_name: String,
@@ -228,7 +233,6 @@ module my_addrx::artemis_one {
     }
 
     #[view]
-    /// Return the address of the managed fungible asset that's created when this module is deployed.
     public fun get_metadata(token_symbol: vector<u8>): Object<Metadata> acquires ObjectController {
         // let asset_address = object::create_object_address(&@my_addrx, token_symbol);
         // object::address_to_object<Metadata>(asset_address)
@@ -277,6 +281,30 @@ module my_addrx::artemis_one {
         let burn_ref = &authorized_borrow_refs(admin, asset).burn_ref;
         let from_wallet = primary_fungible_store::primary_store(from, asset);
         fungible_asset::burn_from(burn_ref, from_wallet, amount);
+    }
+
+    #[view]
+    public fun get_asset_supply_and_balance(
+        user_addr: address,
+        asset_name: String,
+    ): AssetSupplyBalance acquires ObjectController, Asset {
+        let app_signer = get_app_signer();
+        let app_signer_addr = signer::address_of(&app_signer);
+        let asset_address = token::create_token_address(
+            &app_signer_addr,
+            &string::utf8(ARTEMIS_COLLECTION_NAME),
+            &asset_name
+        );
+        let asset = borrow_global<Asset>(asset_address);
+        let token_metadata = get_metadata(*string::bytes(&asset.token_symbol));
+        let total_supply = fungible_asset::supply(token_metadata);
+        let user_store = primary_fungible_store::ensure_primary_store_exists(user_addr, token_metadata);
+        let user_balance = fungible_asset::balance(user_store);
+
+        AssetSupplyBalance {
+            total_supply: option::extract(&mut total_supply),
+            user_balance,
+        }
     }
 
     public entry fun freeze_account(

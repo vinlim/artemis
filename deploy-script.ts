@@ -1,15 +1,15 @@
 import {
     Account,
     Aptos,
-    AptosConfig,
+    AptosConfig, AptosSettings,
     Ed25519PrivateKey,
     Network,
 } from "@aptos-labs/ts-sdk";
 
 
-const APTOS_NETWORK: Network = Network.DEVNET;
+const APTOS_NETWORK = Network.DEVNET;
 const config = new AptosConfig({network: APTOS_NETWORK});
-const aptos = new Aptos(config);
+const aptosClient = new Aptos(config);
 const module = "artemis_one";
 
 async function main() {
@@ -18,7 +18,6 @@ async function main() {
     const alice = Account.fromPrivateKey({
         privateKey: new Ed25519PrivateKey('0xeb15ae1c953958b2bad5d7da3e83f4f18075aeb04d46803ef3845de207725409')
     });
-
 
     console.log(`Admin: ${admin.accountAddress.toString()}`);
     console.log(`Alice: ${alice.accountAddress.toString()}`);
@@ -39,8 +38,8 @@ async function createAsset(signer, assetName) {
         BigInt(100000)
     ];
     const tx = await constructTx(signer, 'create_asset', data);
-    const senderAuthenticator = await aptos.transaction.sign({signer: signer, transaction: tx});
-    const pendingTx = await aptos.transaction.submit.simple({transaction: tx, senderAuthenticator});
+    const senderAuthenticator = await aptosClient.transaction.sign({signer: signer, transaction: tx});
+    const pendingTx = await aptosClient.transaction.submit.simple({transaction: tx, senderAuthenticator});
     console.log(pendingTx.hash);
     return pendingTx.hash;
 }
@@ -51,14 +50,14 @@ async function purchaseToken(sender, asset_name) {
         asset_name
     ]
     const tx = await constructTx(sender, 'purchase_fractional_ownership', data);
-    const senderAuthenticator = await aptos.transaction.sign({signer: sender, transaction: tx});
-    const pendingTx = await aptos.transaction.submit.simple({transaction: tx, senderAuthenticator});
+    const senderAuthenticator = await aptosClient.transaction.sign({signer: sender, transaction: tx});
+    const pendingTx = await aptosClient.transaction.submit.simple({transaction: tx, senderAuthenticator});
     console.log(pendingTx.hash);
     return pendingTx.hash;
 }
 
 async function constructTx(sender, functionName, data) {
-    return await aptos.transaction.build.simple({
+    return await aptosClient.transaction.build.simple({
         sender: sender.accountAddress,
         data: {
             function: `${process.env.ADMIN_ACCOUNT}::${module}::${functionName}`,
