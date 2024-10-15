@@ -16,7 +16,7 @@ import TheWelcome from '../components/TheWelcome.vue'
           investors</p>
         <p class="text-sm mb-6">The big caveat is, the entry is high, and you need to be in the know. Artemis Collective lets
           you invest into part of a bluechip artwork, according to your appetite.</p>
-        <a href="/explore" class="bg-gray-500 px-3 py-3 rounded-lg text-gray-50">Explore now</a>
+        <a href="/explore" class="bg-gray-800 px-3 py-3 rounded-lg text-gray-50">Explore now</a>
       </div>
     </div>
   </main>

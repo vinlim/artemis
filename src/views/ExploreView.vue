@@ -1,61 +1,48 @@
 <template>
   <main class="h-full w-full flex justify-start items-center">
-    <div class="h-full w-full grow p-2 overflow-x-auto flex gap-6 snap-mandatory snap-x">
-      <div class="w-[75%] shrink-0 snap-center flex justify-center items-center">
+    <div class="h-full w-full grow p-2 overflow-x-auto flex gap-6 snap-mandatory snap-x" @scroll="handleScroll">
+      <div v-for="asset in tokenizedAssets"
+           class="w-[75%] shrink-0 snap-center flex justify-center items-center">
         <div class="w-[80%] h-[80%] border-[1px] border-gray-200 border flex justify-center items-center bg-gray-50">
-          <img
-              src="https://arteesan-files.sgp1.digitaloceanspaces.com/5195/conversions/First_last-artikarya_01-fhd.jpg">
+          <img class="max-h-[500px]"
+               :src="asset.meta.image">
         </div>
       </div>
-      <div class="w-[75%] shrink-0 snap-center flex justify-center items-center">
-        <div class="w-[80%] h-[80%] border-[1px] border-gray-200 border flex justify-center items-center bg-gray-50">
-          <img
-              src="https://arteesan-files.sgp1.digitaloceanspaces.com/5197/conversions/third_last-artikarya_01-fhd.jpg">
-        </div>
-      </div>
-      <div class="w-[75%] shrink-0 snap-center flex justify-center items-center">
-        <div class="w-[80%] h-[80%] border-[1px] border-gray-200 border flex justify-center items-center bg-gray-50">
-          <img
-              src="https://arteesan-files.sgp1.digitaloceanspaces.com/5201/conversions/seventh_final-artikarya_01-fhd.jpg">
+      <div v-if="tokenizedAssets.length === 0"
+           class="w-[75%] shrink-0 snap-center flex justify-center items-center">
+        <div class="w-[80%] h-[80%] border-[1px] border-gray-200 animate-fade border flex justify-center items-center bg-gray-50">
+          <div class="animate-pulse font-italic font-light text-sm">Curating artworks...</div>
         </div>
       </div>
     </div>
-    <div class="h-full w-[28em] p-2 bg-gray-50 flex justify-center items-center">
+    <div class="h-full w-[28em] p-2 bg-gray-50 flex justify-center items-center border-l-[1px] border-gray-800">
       <div class="w-full p-6">
         <div class="mb-12">
           <div class="mb-3">
-            <h1 class="font-serif font-mono">Myth of the Dragon Girl</h1>
-            <h2 class="text-gray-500 font-serif">Chros, b 1987</h2>
+            <h1 class="font-serif font-mono">{{ tokenizedAssets[0]?.meta?.name }}</h1>
+            <h2 class="text-gray-500 font-serif">{{ tokenizedAssets[0]?.meta?.properties?.Creator?.description }}, b
+              1987</h2>
           </div>
-          <div class="text-xs">
-            <p>
-              A modern reinterpretation of traditional Chinese narrative through the creation of digital illustration.
-              The Myth of Dragon Girl’, also known as ‘Legend of Liu Yi’, a story about a young scholar who fall in love
-              with the Dragon Girl and rescued her from her evil husband. This study aims to investigate the process of
-              recreating the narrative in the form of digital illustration, including storyline adaptation, character
-              design, and explore how to integrate traditional Chinese elements with modern techniques. First, focuses
-              on the narrative in different versions of interpretation to analyze the development of storyline and
-              character traits; then, retains the main structure, acquire the essence of each edition, and adapts the
-              plots.
-            </p>
+          <div class="text-xs max-h-[240px] text-ellipsis overflow-y-auto">
+            <p class="capitalize">{{ tokenizedAssets[0]?.meta?.description }}</p>
           </div>
         </div>
         <div class="text-black-800">
           <div class="flex justify-between items-center mb-2">
             <div class="font-serif">Symbol</div>
-            <div>ARTE01</div>
+            <div>{{ symbol }}</div>
           </div>
           <div class="flex justify-between items-center mb-2">
             <div class="font-serif">Total Fractions</div>
-            <div>1000</div>
+            <div>{{ totalSupply }}</div>
           </div>
           <div class="flex justify-between items-center mb-2">
             <div class="font-serif">Available Fraction</div>
-            <div>280</div>
+            <div>{{ balanceSupply }}</div>
           </div>
           <div class="flex justify-between items-center mb-2">
             <div class="font-serif">Your Fraction</div>
-            <div>-</div>
+            <div>{{ userSupply > 0 ? userSupply : '-' }}</div>
           </div>
           <div v-if="!isLoading"
                class="w-full mb-2 py-3">
@@ -86,26 +73,61 @@ import Utils from "@/utils/utils";
 import {onMounted, ref} from "vue";
 import {useWalletStore} from "@/stores/wallet";
 
+const adminAccount = import.meta.env.VITE_ADMIN_ACCOUNT;
 const walletStore = useWalletStore();
 const purchaseAmount = ref(0);
 const isLoading = ref(false);
-let APTOS_NETWORK = Network.DEVNET;
+let tokenizedAssets = ref([]);
+let symbol = ref('ARTE04');
+let totalSupply = ref(0);
+let balanceSupply = ref(0);
+let userSupply = ref(0);
+let APTOS_NETWORK = Network.TESTNET;
 let config = new AptosConfig({network: APTOS_NETWORK});
 let aptosClient = new Aptos(config)
 
+function handleScroll(event) {
+}
 
-onMounted(() => {
-  getAccountResource();
-})
+async function getCollectionList() {
+  let assets = await aptosClient.getOwnedDigitalAssets({
+    ownerAddress: adminAccount,
+  });
+
+  for (let asset of assets) {
+    let data = await aptosClient.getDigitalAssetData({
+      digitalAssetAddress: asset.token_data_id,
+    });
+    let metaResponse = await fetch(data.token_uri)
+    data.meta = await metaResponse.json();
+    tokenizedAssets.value.push(data);
+  }
+
+  console.log(tokenizedAssets.value);
+}
+
 
 async function getAccountResource() {
-  // const tokens = await aptosClient.getAccountResource({
-  //   accountAddress: "0xbdb72464e382add52ffbf7f66f689948885831dc14f585685487c9d6945ca846",
-  //   resourceType: "0x1::fungible_asset::FungibleStore"
-  // });
-  //
-  // console.log(tokens);
+  const payload = {
+    function: "0xbce0750b1cc5aed763647692bef5defb40d2280552689cbd78c2be37786e1d20::artemis_one::get_asset_supply_and_balance",
+    functionArguments: [
+      walletStore.address,
+      'Artwork #4'
+    ]
+  };
+
+  let balance = (await aptosClient.view({payload}))[0];
+  totalSupply.value = balance.total_supply;
+  userSupply.value = balance.user_balance;
+  balanceSupply.value = totalSupply.value - userSupply.value;
 }
+
+onMounted(() => {
+  getCollectionList();
+  if (walletStore.connected) {
+    getAccountResource();
+  }
+})
 
 async function purchase() {
   if (purchaseAmount.value < 1) {
@@ -116,16 +138,16 @@ async function purchase() {
   isLoading.value = true;
   const transaction = {
     arguments: [purchaseAmount.value, "Artwork #4"],
-    function: '0x08716457dd4c48f20cdbe240205a1c68e9f411a60fa2fd659265da35ed517340::artemis_one::purchase_fractional_ownership',
+    function: '0xbce0750b1cc5aed763647692bef5defb40d2280552689cbd78c2be37786e1d20::artemis_one::purchase_fractional_ownership',
     type: 'entry_function_payload',
     type_arguments: [],
   };
 
   try {
     let wallet = await Utils.getAptosWallet();
-    let pendingTransaction = await wallet?.signAndSubmitTransaction({payload: transaction});
-    const txn = await aptosClient.getTransactionByHash(pendingTransaction.hash);
-    console.log(txn);
+    await wallet?.signAndSubmitTransaction({payload: transaction});
+    purchaseAmount.value = 0;
+    await getAccountResource();
   } catch (error) {
     console.error(error);
   }

@@ -11,6 +11,7 @@ module my_addrx::artemis_one {
     use std::signer;
     use std::signer::address_of;
     use std::string::{Self, String};
+    use std::vector;
     use aptos_framework::aptos_coin::AptosCoin;
     use aptos_framework::coin;
 
@@ -54,6 +55,13 @@ module my_addrx::artemis_one {
     struct AssetSupplyBalance has drop {
         total_supply: u128,
         user_balance: u64,
+    }
+
+    struct AssetInfo has store, drop {
+        name: String,
+        token_symbol: String,
+        current_supply: u128,
+        max_supply: u128,
     }
 
     #[event]
@@ -234,9 +242,6 @@ module my_addrx::artemis_one {
 
     #[view]
     public fun get_metadata(token_symbol: vector<u8>): Object<Metadata> acquires ObjectController {
-        // let asset_address = object::create_object_address(&@my_addrx, token_symbol);
-        // object::address_to_object<Metadata>(asset_address)
-
         let app_signer = get_app_signer();
         let app_signer_addr = signer::address_of(&app_signer);
         let asset_address = object::create_object_address(&app_signer_addr, token_symbol);

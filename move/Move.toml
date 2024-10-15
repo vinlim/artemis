@@ -7,5 +7,5 @@ AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", rev = "
 AptosTokenObjects = { git = "https://github.com/aptos-labs/aptos-core.git", rev = "mainnet", subdir = "aptos-move/framework/aptos-token-objects" }
 
 [addresses]
-my_addrx = "0xbce0750b1cc5aed763647692bef5defb40d2280552689cbd78c2be37786e1d20"
+my_addrx = "0xac5e040c4f2bf19c92cedd01c13514eabd3396f0739bfcfc4a90a40865fa7e38"
 std = "0x1"

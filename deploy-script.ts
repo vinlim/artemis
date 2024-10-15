@@ -1,39 +1,52 @@
 import {
     Account,
     Aptos,
-    AptosConfig, AptosSettings,
+    AptosConfig,
     Ed25519PrivateKey,
     Network,
 } from "@aptos-labs/ts-sdk";
 
 
-const APTOS_NETWORK = Network.DEVNET;
+const APTOS_NETWORK = Network.TESTNET;
 const config = new AptosConfig({network: APTOS_NETWORK});
 const aptosClient = new Aptos(config);
 const module = "artemis_one";
+const assets = [
+    {
+        name: 'Awan',
+        artist: "Tengku Adil",
+        url: "https://arteesan.io/api/token/acv/217",
+        tokenName: "Artemis Seven",
+        tokenSymbol: "ARTE07"
+    }
+]
 
 async function main() {
-    const adminPrivateKey = new Ed25519PrivateKey(process.env.ADMIN_PRIVATE_KEY);
+    const adminPrivateKey = new Ed25519PrivateKey(process.env.VITE_ADMIN_PRIVATE_KEY);
     const admin = Account.fromPrivateKey({privateKey: adminPrivateKey})
     const alice = Account.fromPrivateKey({
-        privateKey: new Ed25519PrivateKey('0xeb15ae1c953958b2bad5d7da3e83f4f18075aeb04d46803ef3845de207725409')
+        privateKey: new Ed25519PrivateKey('0x4aa80640e1e35caee30b40807baea0ba9ead4c9ad2d4305d0458f0d59091c5d9')
     });
 
     console.log(`Admin: ${admin.accountAddress.toString()}`);
     console.log(`Alice: ${alice.accountAddress.toString()}`);
-    const assetName = 'Artwork #4';
+    const assetName = 'Cerita Seorang Rakan';
 
-    await createAsset(admin, assetName)
-    await purchaseToken(alice, assetName);
+    for (let asset of assets) {
+        console.log(`Creating asset: ${asset.name}`);
+        await createAsset(admin, asset.name, asset.artist, asset.url, asset.tokenName, asset.tokenSymbol);
+    }
+
+    // await purchaseToken(alice, assetName);
 }
 
-async function createAsset(signer, assetName) {
+async function createAsset(signer, assetName, artist, url, tokenName, tokenSymbol) {
     const data = [
         assetName,
-        "Pakwali",
-        "https://arteesan.io/pakwali",
-        "Artemis Four",
-        "ARTE04",
+        artist,
+        url,
+        tokenName,
+        tokenSymbol,
         BigInt(1000),
         BigInt(100000)
     ];
@@ -60,7 +73,7 @@ async function constructTx(sender, functionName, data) {
     return await aptosClient.transaction.build.simple({
         sender: sender.accountAddress,
         data: {
-            function: `${process.env.ADMIN_ACCOUNT}::${module}::${functionName}`,
+            function: `${process.env.VITE_ADMIN_ACCOUNT}::${module}::${functionName}`,
             functionArguments: data
         }
     });

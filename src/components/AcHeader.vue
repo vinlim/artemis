@@ -5,7 +5,6 @@ import {useWalletStore} from "@/stores/wallet";
 
 const walletStore = useWalletStore();
 
-
 async function connectWallet() {
   try {
     const response = await Utils.getAptosWallet().connect();
@@ -22,7 +21,7 @@ async function disconnectWallet() {
 </script>
 
 <template>
-  <header class="w-full h-[65px] border-b-[1px] border-gray:50 z-10">
+  <header class="w-full h-[65px] bg-gray border-b-[1px] border-gray:50 z-10">
     <div class="h-full container mx-auto flex justify-between items-center font-serif">
       <a class="text-xl font-thin" href="/">Artemis Collective</a>
       <div class="flex justify-end items-center gap-3">
