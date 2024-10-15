@@ -8,11 +8,11 @@ const aptosClient = new tsSdk.Aptos(config);
 const module$1 = "artemis_one";
 const assets = [
     {
-        name: 'Awan',
-        artist: "Tengku Adil",
-        url: "https://arteesan.io/api/token/acv/217",
-        tokenName: "Artemis Seven",
-        tokenSymbol: "ARTE07"
+        name: 'The Pink Peonies',
+        artist: "Fathima Aafreen",
+        url: "https://arteesan.io/api/token/acv/79",
+        tokenName: "Artemis Nine",
+        tokenSymbol: "ARTE09"
     }
 ];
 

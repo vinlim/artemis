@@ -10,7 +10,8 @@
       </div>
       <div v-if="tokenizedAssets.length === 0"
            class="w-[75%] shrink-0 snap-center flex justify-center items-center">
-        <div class="w-[80%] h-[80%] border-[1px] border-gray-200 animate-fade border flex justify-center items-center bg-gray-50">
+        <div
+            class="w-[80%] h-[80%] border-[1px] border-gray-200 animate-fade border flex justify-center items-center bg-gray-50">
           <div class="animate-pulse font-italic font-light text-sm">Curating artworks...</div>
         </div>
       </div>
@@ -102,17 +103,15 @@ async function getCollectionList() {
     data.meta = await metaResponse.json();
     tokenizedAssets.value.push(data);
   }
-
-  console.log(tokenizedAssets.value);
 }
 
 
 async function getAccountResource() {
   const payload = {
-    function: "0xbce0750b1cc5aed763647692bef5defb40d2280552689cbd78c2be37786e1d20::artemis_one::get_asset_supply_and_balance",
+    function: `${adminAccount}::artemis_one::get_asset_supply_and_balance`,
     functionArguments: [
       walletStore.address,
-      'Artwork #4'
+      tokenizedAssets.value[0]?.token_name
     ]
   };
 
@@ -123,11 +122,15 @@ async function getAccountResource() {
 }
 
 onMounted(() => {
-  getCollectionList();
+  init()
+})
+
+async function init() {
+  await getCollectionList();
   if (walletStore.connected) {
     getAccountResource();
   }
-})
+}
 
 async function purchase() {
   if (purchaseAmount.value < 1) {
@@ -137,8 +140,8 @@ async function purchase() {
 
   isLoading.value = true;
   const transaction = {
-    arguments: [purchaseAmount.value, "Artwork #4"],
-    function: '0xbce0750b1cc5aed763647692bef5defb40d2280552689cbd78c2be37786e1d20::artemis_one::purchase_fractional_ownership',
+    arguments: [purchaseAmount.value, tokenizedAssets.value[0]?.token_name],
+    function: `${adminAccount}::artemis_one::purchase_fractional_ownership`,
     type: 'entry_function_payload',
     type_arguments: [],
   };
