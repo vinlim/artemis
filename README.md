@@ -33,5 +33,10 @@ associated with deploying multiple
 smart contracts, and the needs for these smart contracts to communicate.
 
 Aptos blockchain's high throughput and optimized performance effectively also negate the gas fee issues that plague
-other
-blockchain platforms.
+other blockchain platforms.
+
+# Demo & Links
+
+- Video Demo - https://youtu.be/Nj5f3MpjG4M
+- Testnet - https://explorer.aptoslabs.com/account/0xac5e040c4f2bf19c92cedd01c13514eabd3396f0739bfcfc4a90a40865fa7e38/transactions?network=testnet
+
